@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "MqttBroker": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}
