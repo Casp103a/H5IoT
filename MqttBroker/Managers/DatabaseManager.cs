@@ -12,6 +12,8 @@ namespace MqttBroker.Managers
         }
         private void SetupDatabase()
         {
+            SetupDatabaseFile();
+
             if (!CheckIfPinTableExists())
                 CreatePinTable();
 
@@ -101,6 +103,24 @@ namespace MqttBroker.Managers
             using var command = new SqliteCommand(query, connection);
             using var reader = command.ExecuteReader();
             return reader.HasRows;
+        }
+
+        private void SetupDatabaseFile()
+        {
+            string filePath = Environment.CurrentDirectory + "mqttbroker.db";
+            if (!File.Exists(filePath))
+            {
+                try
+                {
+                    File.Create(filePath).Close();
+
+                    Console.WriteLine("Create database file");
+                }
+                catch
+                {
+                    Console.WriteLine("Failed while create database file");
+                }
+            }
         }
     }
 }
