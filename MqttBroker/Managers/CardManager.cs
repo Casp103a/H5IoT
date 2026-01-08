@@ -1,4 +1,5 @@
 ﻿using MqttBroker.Models;
+using Microsoft.Data.Sqlite;
 
 namespace MqttBroker.Managers
 {
@@ -15,7 +16,7 @@ namespace MqttBroker.Managers
 
             try
             {
-                using var connection = new Microsoft.Data.Sqlite.SqliteConnection(ConnectionString);
+                using var connection = new SqliteConnection(ConnectionString);
                 connection.Open();
 
                 using var command = connection.CreateCommand();
@@ -38,7 +39,7 @@ namespace MqttBroker.Managers
         {
             try
             {
-                using var connection = new Microsoft.Data.Sqlite.SqliteConnection(ConnectionString);
+                using var connection = new SqliteConnection(ConnectionString);
                 connection.Open();
 
                 using var command = connection.CreateCommand();
