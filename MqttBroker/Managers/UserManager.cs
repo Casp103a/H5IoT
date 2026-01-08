@@ -27,10 +27,15 @@ namespace MqttBroker.Managers
                 command.Parameters.AddWithValue("@UserName", userModel.UserName ?? string.Empty);
 
                 int rowsAffected = command.ExecuteNonQuery();
+
+                Console.WriteLine("Inserted user");
+
                 return rowsAffected > 0;
             }
             catch
             {
+                Console.WriteLine("Failed while inserted user");
+
                 return false;
             }
         }

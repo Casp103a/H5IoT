@@ -27,10 +27,13 @@ namespace MqttBroker.Managers
                 command.Parameters.AddWithValue("@CardName", cardModel.CardName ?? string.Empty);
 
                 int rowsAffected = command.ExecuteNonQuery();
+
+                Console.WriteLine("Inserted card");
                 return rowsAffected > 0;
             }
             catch
             {
+                Console.WriteLine("Failed while inserted card");
                 return false;
             }
         }

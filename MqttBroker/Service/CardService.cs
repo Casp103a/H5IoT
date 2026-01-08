@@ -30,7 +30,7 @@ namespace MqttBroker.Service
                         CardName = "" // Default name if not provided
                     };
 
-                    var success = cardManager.InsertCard(cardModel);                    
+                    var success = cardManager.InsertCard(cardModel);                 
                 }
             }
             catch (JsonException)

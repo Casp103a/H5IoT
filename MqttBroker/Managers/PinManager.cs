@@ -23,12 +23,16 @@ namespace MqttBroker.Managers
                 command.Parameters.AddWithValue("@Pin", pin.Pin);
                 command.Parameters.AddWithValue("@UniqueID", pin.UniqueID);
                 command.Parameters.AddWithValue("@CardID", pin.CardID);
+                
+                
+                Console.WriteLine("Inserted pin");
 
                 return command.ExecuteNonQuery() == 1;
             }
             catch
             {
                 // Optionally log the exception
+                Console.WriteLine("Failed while inserted pin");
                 return false;
             }
         }
