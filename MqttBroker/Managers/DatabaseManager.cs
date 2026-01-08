@@ -30,6 +30,7 @@ namespace MqttBroker.Managers
 
             const string createTableQuery = @"
                 CREATE TABLE IF NOT EXISTS Pin (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     Timestamp TEXT NOT NULL,
                     Pin TEXT NOT NULL,
                     UniqueID TEXT NOT NULL,
@@ -58,6 +59,7 @@ namespace MqttBroker.Managers
             connection.Open();
             const string createTableQuery = @"
                 CREATE TABLE IF NOT EXISTS Card (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     Timestamp TEXT NOT NULL,
                     CardID TEXT NOT NULL,
                     CardName TEXT NOT NULL
@@ -82,6 +84,7 @@ namespace MqttBroker.Managers
             connection.Open();
             const string createTableQuery = @"
                 CREATE TABLE IF NOT EXISTS Users (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     CardID TEXT NOT NULL,
                     Pin TEXT NOT NULL,
                     UserName TEXT NOT NULL

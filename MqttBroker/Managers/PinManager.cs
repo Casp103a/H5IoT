@@ -24,7 +24,6 @@ namespace MqttBroker.Managers
                 command.Parameters.AddWithValue("@UniqueID", pin.UniqueID);
                 command.Parameters.AddWithValue("@CardID", pin.CardID);
                 
-                
                 Console.WriteLine("Inserted pin");
 
                 return command.ExecuteNonQuery() == 1;
