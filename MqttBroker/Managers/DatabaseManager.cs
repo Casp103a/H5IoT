@@ -1,0 +1,76 @@
+﻿using Microsoft.Data.Sqlite;
+
+namespace MqttBroker.Managers
+{
+    internal class DatabaseManager
+    {
+        private const string ConnectionString = "Data Source=mqttbroker.db";
+
+        public DatabaseManager()
+        {
+            SetupDatabase();
+        }
+        private void SetupDatabase()
+        {
+            if (!CheckIfPinTableExists())
+                CreatePinTable();
+
+            if(!CheckIfCardTableExists())
+                CreateCardTable();
+        }
+
+        //This will create the pin table base the on the PinModel
+        private void CreatePinTable()
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+
+            const string createTableQuery = @"
+                CREATE TABLE IF NOT EXISTS Pin (
+                    Timestamp TEXT NOT NULL,
+                    Pin TEXT NOT NULL,
+                    UniqueID TEXT NOT NULL,
+                    CardID TEXT NOT NULL
+                );";
+
+            using var command = new SqliteCommand(createTableQuery, connection);
+            command.ExecuteNonQuery();
+        }
+
+        private bool CheckIfPinTableExists()
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+
+            const string query = "SELECT name FROM sqlite_master WHERE type='table' AND name='Pin';";
+            using var command = new SqliteCommand(query, connection);
+            using var reader = command.ExecuteReader();
+
+            return reader.HasRows;
+        }
+
+        private void CreateCardTable()
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+            const string createTableQuery = @"
+                CREATE TABLE IF NOT EXISTS Card (
+                    Timestamp TEXT NOT NULL,
+                    CardID TEXT NOT NULL,
+                    CardName TEXT NOT NULL
+                );";
+            using var command = new SqliteCommand(createTableQuery, connection);
+            command.ExecuteNonQuery();
+        }
+
+        private bool CheckIfCardTableExists()
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+            const string query = "SELECT name FROM sqlite_master WHERE type='table' AND name='Card';";
+            using var command = new SqliteCommand(query, connection);
+            using var reader = command.ExecuteReader();
+            return reader.HasRows;
+        }
+    }
+}

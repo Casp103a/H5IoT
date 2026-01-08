@@ -24,7 +24,7 @@ namespace MqttBroker
                 return;
             }
 
-            var topicFilter = mqttFactory.CreateTopicFilterBuilder().WithTopic("hansenberg/test/1").WithAtLeastOnceQoS();
+            var topicFilter = mqttFactory.CreateTopicFilterBuilder().WithTopic("hansenberg/pin").WithAtLeastOnceQoS();
 
             var mqttSubscribeOptions = mqttFactory.CreateSubscribeOptionsBuilder().WithTopicFilter(topicFilter).Build();
 
@@ -42,11 +42,12 @@ namespace MqttBroker
 
         private static async Task MessageRecived(MqttApplicationMessageReceivedEventArgs args)
         {
-            if (args.ApplicationMessage.Topic == "hansenberg/test/1")
+            if (args.ApplicationMessage.Topic == "hansenberg/pin")
             {
                 Console.WriteLine("### RECEIVED APPLICATION MESSAGE ###");
-                Console.WriteLine($"+ Topic = {args.ApplicationMessage.Topic}");
-                Console.WriteLine($"+ Message = {args.ApplicationMessage.ConvertPayloadToString()}");
+                Console.WriteLine($"Topic = {args.ApplicationMessage.Topic}");
+                Console.WriteLine($"Message = {args.ApplicationMessage.ConvertPayloadToString()}");
+                Console.WriteLine($"Uid = {args.ClientId}");
             }
         }
     }
