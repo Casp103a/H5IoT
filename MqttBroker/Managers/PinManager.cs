@@ -3,7 +3,7 @@ using MqttBroker.Models;
 
 namespace MqttBroker.Managers
 {
-    internal class PinManagers
+    internal class PinManager
     {
         private const string ConnectionString = "Data Source=mqttbroker.db";
 

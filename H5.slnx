@@ -1,3 +1,4 @@
 <Solution>
   <Project Path="MqttBroker/MqttBroker.csproj" />
+  <Project Path="UserRegistaionApp/UserRegistaionApp.csproj" Id="8e00c966-ea47-4321-b23e-0508d028c971" />
 </Solution>

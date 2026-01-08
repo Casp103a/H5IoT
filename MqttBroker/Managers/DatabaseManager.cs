@@ -2,7 +2,7 @@
 
 namespace MqttBroker.Managers
 {
-    internal class DatabaseManager
+    public class DatabaseManager
     {
         private const string ConnectionString = "Data Source=mqttbroker.db";
 

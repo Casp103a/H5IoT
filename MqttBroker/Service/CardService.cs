@@ -1,0 +1,42 @@
+﻿using MqttBroker.Dtos;
+using MqttBroker.Managers;
+using MqttBroker.Models;
+using System.Text.Json;
+
+namespace MqttBroker.Service
+{
+    internal class CardService
+    {
+        private readonly CardManager cardManager;
+
+        public CardService()
+        {
+            cardManager = new CardManager();
+        }
+
+        public void Handle(string message, string clientId)
+        {
+            try
+            {
+                // Expected format: {"CardID":"12345678","UniqueID":"device123"}
+                var cardData = JsonSerializer.Deserialize<CardDto>(message);
+
+                if (cardData != null)
+                {
+                    var cardModel = new CardModel
+                    {
+                        Timestamp = DateTime.UtcNow,
+                        CardID = cardData.CardID,
+                        CardName = "" // Default name if not provided
+                    };
+
+                    var success = cardManager.InsertCard(cardModel);                    
+                }
+            }
+            catch (JsonException)
+            {
+                Console.WriteLine("Failed to parse card message as JSON.");
+            }
+        }
+    }
+}
