@@ -10,10 +10,10 @@ namespace MqttBroker.Service
         private readonly UserManager userManager;
         private readonly CardManager cardManager;
 
-        public UserService()
+        public UserService(DatabaseManager databaseManager)
         {
-            userManager = new UserManager();
-            cardManager = new CardManager();
+            userManager = new UserManager(databaseManager);
+            cardManager = new CardManager(databaseManager);
         }
 
         public void HandleUserMessage(string message)

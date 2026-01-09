@@ -9,9 +9,9 @@ namespace MqttBroker.Service
     {
         private readonly CardManager cardManager;
 
-        public CardService()
+        public CardService(DatabaseManager databaseManager)
         {
-            cardManager = new CardManager();
+            cardManager = new CardManager(databaseManager);
         }
 
         public void Handle(string message, string clientId)

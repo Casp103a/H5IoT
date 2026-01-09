@@ -5,7 +5,12 @@ namespace MqttBroker.Managers
 {
     internal class UserManager
     {
-        private const string ConnectionString = "Data Source=mqttbroker.db";
+        private readonly DatabaseManager databaseManager;
+
+        public UserManager(DatabaseManager databaseManager)
+        {
+            this.databaseManager = databaseManager;
+        }
 
         public bool InsertUser(UserModel userModel)
         {
@@ -16,7 +21,7 @@ namespace MqttBroker.Managers
 
             try
             {
-                using var connection = new SqliteConnection(ConnectionString);
+                using var connection = new SqliteConnection(databaseManager.ConnectionString);
                 connection.Open();
 
                 using var command = connection.CreateCommand();
@@ -47,7 +52,7 @@ namespace MqttBroker.Managers
 
             try
             {
-                using var connection = new SqliteConnection(ConnectionString);
+                using var connection = new SqliteConnection(databaseManager.ConnectionString);
                 connection.Open();
 
                 using var command = connection.CreateCommand();
@@ -84,7 +89,7 @@ namespace MqttBroker.Managers
 
             try
             {
-                using var connection = new SqliteConnection(ConnectionString);
+                using var connection = new SqliteConnection(databaseManager.ConnectionString);
                 connection.Open();
 
                 using var command = connection.CreateCommand();

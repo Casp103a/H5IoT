@@ -5,13 +5,18 @@ namespace MqttBroker.Managers
 {
     internal class PinManager
     {
-        private const string ConnectionString = "Data Source=mqttbroker.db";
+        private readonly DatabaseManager databaseManager;
+
+        public PinManager(DatabaseManager databaseManager)
+        {
+            this.databaseManager = databaseManager;
+        }
 
         public bool InsertPin(PinModel pin)
         {
             try
             {
-                using var connection = new SqliteConnection(ConnectionString);
+                using var connection = new SqliteConnection(databaseManager.ConnectionString);
                 connection.Open();
 
                 const string insertQuery = @"
@@ -23,7 +28,7 @@ namespace MqttBroker.Managers
                 command.Parameters.AddWithValue("@Pin", pin.Pin);
                 command.Parameters.AddWithValue("@UniqueID", pin.UniqueID);
                 command.Parameters.AddWithValue("@CardID", pin.CardID);
-                
+
                 Console.WriteLine("Inserted pin");
 
                 return command.ExecuteNonQuery() == 1;
@@ -45,7 +50,7 @@ namespace MqttBroker.Managers
 
             try
             {
-                using var connection = new SqliteConnection(ConnectionString);
+                using var connection = new SqliteConnection(databaseManager.ConnectionString);
                 connection.Open();
 
                 const string selectQuery = @"

@@ -69,9 +69,9 @@ namespace MqttBroker
             try
             {
                 databaseManager = new DatabaseManager();
-                userService = new UserService();
-                pinService = new PinService(mqttClient);
-                cardService = new CardService();
+                userService = new UserService(databaseManager);
+                pinService = new PinService(mqttClient, databaseManager);
+                cardService = new CardService(databaseManager);
 
                 Console.WriteLine("Database and managers initialized successfully.");
             }

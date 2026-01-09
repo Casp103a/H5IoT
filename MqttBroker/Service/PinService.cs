@@ -6,18 +6,18 @@ using System.Text.Json;
 
 namespace MqttBroker.Service
 {
-    public class PinService
+    internal class PinService
     {
         private readonly PinManager pinManager;
         private readonly CardManager cardManager;
         private readonly UserManager userManager;
         private readonly IMqttClient mqttClient;
 
-        public PinService(IMqttClient mqttClient)
+        public PinService(IMqttClient mqttClient, DatabaseManager databaseManager)
         {
-            pinManager = new PinManager();
-            cardManager = new CardManager();
-            userManager = new UserManager();
+            pinManager = new PinManager(databaseManager);
+            cardManager = new CardManager(databaseManager);
+            userManager = new UserManager(databaseManager);
             this.mqttClient = mqttClient;
         }
 
