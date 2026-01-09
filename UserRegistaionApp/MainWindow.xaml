@@ -75,18 +75,12 @@
                        HorizontalAlignment="Center"
                        Margin="0,0,0,16"/>
                 <Label Content="Pin"/>
-                <TextBox Name="PinTextBox"
-                         Height="35"
-                         PreviewTextInput="PinTextBox_PreviewTextInput"
-                         DataObject.Pasting="PinTextBox_Pasting"/>
+                <PasswordBox Name="PinPasswordBox" Height="35" PreviewTextInput="PinTextBox_PreviewTextInput" DataObject.Pasting="PinTextBox_Pasting"  VerticalContentAlignment="Center"/>
                 <Label Content="Confirm Pin"/>
-                <TextBox Name="ConfirmationPinTextBox"
-                         Height="35"
-                         PreviewTextInput="PinTextBox_PreviewTextInput"
-                         DataObject.Pasting="PinTextBox_Pasting"/>
+                <PasswordBox Name="ConfirmationPinPasswordBox" Height="35" PreviewTextInput="PinTextBox_PreviewTextInput" DataObject.Pasting="PinTextBox_Pasting" VerticalContentAlignment="Center"/>
                 <Button Content="Register"
                         Click="Button_Click"
-                        HorizontalAlignment="Stretch"/>
+                        HorizontalAlignment="Stretch" Height="40"/>
             </StackPanel>
         </Border>
     </Grid>

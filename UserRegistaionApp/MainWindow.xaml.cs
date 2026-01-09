@@ -15,13 +15,21 @@ namespace UserRegistaionApp
             InitializeComponent();
         }
 
+        DateTime lastPublish = DateTime.MinValue;
+        TimeSpan publishInterval = TimeSpan.FromSeconds(15);
+
         private void Button_Click(object sender, RoutedEventArgs e)
         {
             var userName = UsernameTextBox.Text;
-            var pin = PinTextBox.Text;
-            var confirmPin = ConfirmationPinTextBox.Text;
+            var pin = PinPasswordBox.Password;
+            var confirmPin = ConfirmationPinPasswordBox.Password;
 
-            if (!pin.Equals(confirmPin))
+            if (!pin.Equals(confirmPin) || string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(pin))
+            {
+                return;
+            }
+
+            if (DateTime.Now - lastPublish < publishInterval)
             {
                 return;
             }
@@ -29,7 +37,7 @@ namespace UserRegistaionApp
             var mqttFactory = new MqttClientFactory();
             using var mqttClient = mqttFactory.CreateMqttClient();
             var mqttClientOptions = new MqttClientOptionsBuilder().WithTcpServer("192.168.10.50").Build();
-           
+
             try
             {
                 mqttClient.ConnectAsync(mqttClientOptions, CancellationToken.None).Wait();
@@ -52,7 +60,21 @@ namespace UserRegistaionApp
                 .WithPayload(payload)
                 .Build();
 
-            mqttClient.PublishAsync(message, CancellationToken.None).Wait();
+            var result = mqttClient.PublishAsync(message, CancellationToken.None);
+            result.Wait();
+
+            if (result.Result.IsSuccess)
+            {
+                lastPublish = DateTime.Now;
+                UsernameTextBox.Text = string.Empty;
+                PinPasswordBox.Password = string.Empty;
+                ConfirmationPinPasswordBox.Password = string.Empty;
+                MessageBox.Show("User registered successfully!", "User registration", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show("Failed to register user.", "User registration", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private void PinTextBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
@@ -66,8 +88,8 @@ namespace UserRegistaionApp
             {
                 string text = (string)e.DataObject.GetData(typeof(string)); if (!text.All(char.IsDigit)) e.CancelCommand();
             }
-            else 
-            { 
+            else
+            {
                 e.CancelCommand();
             }
         }
