@@ -35,6 +35,7 @@ namespace MqttBroker
             {
                 "hansenberg/pin",
                 "hansenberg/card",
+                "hansenberg/card/deactivate",
                 "hansenberg/user/register",
             };
 
@@ -103,8 +104,11 @@ namespace MqttBroker
                     case "hansenberg/card":
                         cardService.Handle(message, clientId);
                         break;
+                    case "hansenberg/card/deactivate":
+                        userService.Deactivate(message);
+                        break;
                     case "hansenberg/user/register":
-                        userService.HandleUserMessage(message);
+                        userService.Create(message);
                         break;
                     default:
                         Console.WriteLine($"Unhandled topic: {topic}");

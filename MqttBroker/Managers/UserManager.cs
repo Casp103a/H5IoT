@@ -26,10 +26,12 @@ namespace MqttBroker.Managers
 
                 using var command = connection.CreateCommand();
                 command.CommandText =
-                    @"INSERT INTO Users (CardID, Pin, UserName) VALUES (@CardID, @Pin, @UserName);";
+                    @"INSERT INTO Users (CardID, Pin, UserName, ExpireDate, IsActive) VALUES (@CardID, @Pin, @UserName, @ExpireDate, @IsActive);";
                 command.Parameters.AddWithValue("@CardID", userModel.CardID);
                 command.Parameters.AddWithValue("@Pin", userModel.Pin);
                 command.Parameters.AddWithValue("@UserName", userModel.UserName ?? string.Empty);
+                command.Parameters.AddWithValue("@ExpireDate", userModel.ExpireDate.HasValue ? userModel.ExpireDate.Value : DBNull.Value);
+                command.Parameters.AddWithValue("@IsActive", userModel.IsActive);
 
                 int rowsAffected = command.ExecuteNonQuery();
 
@@ -57,7 +59,7 @@ namespace MqttBroker.Managers
 
                 using var command = connection.CreateCommand();
                 command.CommandText =
-                    @"SELECT CardID, Pin, UserName
+                    @"SELECT CardID, Pin, UserName, ExpireDate, IsActive
                       FROM Users
                       WHERE CardID = @CardID
                       LIMIT 1;";
@@ -70,7 +72,9 @@ namespace MqttBroker.Managers
                     {
                         CardID = reader.GetString(0),
                         Pin = reader.GetString(1),
-                        UserName = reader.GetString(2)
+                        UserName = reader.GetString(2),
+                        ExpireDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
+                        IsActive = reader.GetBoolean(4)
                     };
                 }
             }
@@ -82,13 +86,23 @@ namespace MqttBroker.Managers
             return null;
         }
 
-        public bool ValidateUser(string cardID, string pin)
+        public bool ValidateUser(UserModel user, string cardID, string pin)
         {
-            if (string.IsNullOrWhiteSpace(cardID) || string.IsNullOrWhiteSpace(pin))
+            if (string.IsNullOrWhiteSpace(cardID) || string.IsNullOrWhiteSpace(pin) || user == null)
                 return false;
 
             try
             {
+                if (!user.IsActive)
+                    return false;
+
+                if (user.ExpireDate < DateTime.Now)
+                {
+                    DeactivateUser(cardID);
+                    return false;
+                }
+
+
                 using var connection = new SqliteConnection(databaseManager.ConnectionString);
                 connection.Open();
 
@@ -102,6 +116,29 @@ namespace MqttBroker.Managers
 
                 var result = command.ExecuteScalar();
                 return Convert.ToInt32(result) > 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool DeactivateUser(string cardID)
+        {
+            if (string.IsNullOrWhiteSpace(cardID))
+                return false;
+            try
+            {
+                using var connection = new SqliteConnection(databaseManager.ConnectionString);
+                connection.Open();
+                using var command = connection.CreateCommand();
+                command.CommandText =
+                    @"UPDATE Users
+                      SET IsActive = 0
+                      WHERE CardID = @CardID;";
+                command.Parameters.AddWithValue("@CardID", cardID);
+                int rowsAffected = command.ExecuteNonQuery();
+                return rowsAffected > 0;
             }
             catch
             {

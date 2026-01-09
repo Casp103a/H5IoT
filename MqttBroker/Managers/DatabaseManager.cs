@@ -90,7 +90,9 @@ namespace MqttBroker.Managers
                     ID INTEGER PRIMARY KEY AUTOINCREMENT,
                     CardID TEXT NOT NULL,
                     Pin TEXT NOT NULL,
-                    UserName TEXT NOT NULL
+                    UserName TEXT NOT NULL,
+                    ExpireDate TEXT,
+                    IsActive INTEGER NOT NULL
                 );";
             using var command = new SqliteCommand(createTableQuery, connection);
             command.ExecuteNonQuery();

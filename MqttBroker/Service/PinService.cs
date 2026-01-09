@@ -11,6 +11,7 @@ namespace MqttBroker.Service
         private readonly PinManager pinManager;
         private readonly CardManager cardManager;
         private readonly UserManager userManager;
+        private readonly EncryptionService encryptionService;
         private readonly IMqttClient mqttClient;
 
         public PinService(IMqttClient mqttClient, DatabaseManager databaseManager)
@@ -19,6 +20,7 @@ namespace MqttBroker.Service
             cardManager = new CardManager(databaseManager);
             userManager = new UserManager(databaseManager);
             this.mqttClient = mqttClient;
+            encryptionService = new EncryptionService();
         }
 
         public void Handle(string message, string clientId)
@@ -48,7 +50,7 @@ namespace MqttBroker.Service
                     var pinModel = new PinModel
                     {
                         Timestamp = DateTime.UtcNow,
-                        Pin = pinData.Pin,
+                        Pin = encryptionService.Encrypt(pinData.Pin),
                         UniqueID = pinData.UniqueID,
                         CardID = cardId
                     };
@@ -63,7 +65,7 @@ namespace MqttBroker.Service
                     if (user != null)
                     {
                         // User exists, now validate PIN
-                        var isValidPin = userManager.ValidateUser(cardId, pinData.Pin);
+                        var isValidPin = userManager.ValidateUser(user, cardId, pinData.Pin);
 
                         if (isValidPin)
                         {

@@ -9,14 +9,16 @@ namespace MqttBroker.Service
     {
         private readonly UserManager userManager;
         private readonly CardManager cardManager;
+        private readonly EncryptionService encryptionService;
 
         public UserService(DatabaseManager databaseManager)
         {
             userManager = new UserManager(databaseManager);
             cardManager = new CardManager(databaseManager);
+            encryptionService = new EncryptionService();
         }
 
-        public void HandleUserMessage(string message)
+        public void Create(string message)
         {
             try
             {
@@ -29,8 +31,10 @@ namespace MqttBroker.Service
                     var userModel = new UserModel
                     {
                         CardID = latestCard.CardID,
-                        Pin = userData.Pin,
-                        UserName = userData.UserName
+                        Pin = encryptionService.Encrypt(userData.Pin),
+                        UserName = userData.UserName,
+                        ExpireDate = userData.ExpireDate,
+                        IsActive = true
                     };
 
                     var success = userManager.InsertUser(userModel);
@@ -40,6 +44,11 @@ namespace MqttBroker.Service
             {
                 Console.WriteLine("Failed to parse user message as JSON.");
             }
+        }
+
+        public void Deactivate(string cardID)
+        {
+            userManager.DeactivateUser(cardID);
         }
     }
 }
