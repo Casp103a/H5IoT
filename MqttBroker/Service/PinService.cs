@@ -71,7 +71,7 @@ namespace MqttBroker.Service
                         {
                             //Send unlock to door;
                             var unlockMessage = new MqttApplicationMessageBuilder()
-                                .WithTopic($"hansenberg/door/unlock")
+                                .WithTopic("hansenberg/door/unlock")
                                 .WithPayload("UNLOCK")
                                 .Build();
 

@@ -1,4 +1,5 @@
-﻿using MqttBroker.Managers;
+﻿using MqttBroker.Exceptions;
+using MqttBroker.Managers;
 using MqttBroker.Service;
 using MQTTnet;
 
@@ -10,6 +11,7 @@ namespace MqttBroker
         private static PinService pinService = null!;
         private static CardService cardService = null!;
         private static UserService userService = null!;
+        private static IMqttClient mqtt;
 
         static void Main(string[] args)
         {
@@ -52,6 +54,7 @@ namespace MqttBroker
 
             // Initialize database and managers
             InitializeManagers(mqttClient);
+            mqtt = mqttClient;
 
             Console.WriteLine("Press any key to exit.");
             Console.ReadLine();
@@ -108,7 +111,43 @@ namespace MqttBroker
                         userService.Deactivate(message);
                         break;
                     case "hansenberg/user/register":
-                        userService.Create(message);
+                        bool failed = false;
+                        string errorMessage = string.Empty;
+
+                        try
+                        {
+                            var result = userService.Create(message);
+                            if (!result)
+                            {
+                                failed = true;
+                                errorMessage = "User registration failed due to unknown error.";
+                            }
+                        }
+                        catch (CardAlreadyExistException)
+                        {
+                            failed = true;
+                            errorMessage = "Card already exists.";
+                        }
+
+                        if (failed)
+                        {
+                            var mqttErrorMessage = new MqttApplicationMessageBuilder()
+                                .WithTopic("hansenberg/user/failed")
+                                .WithPayload(errorMessage)
+                                .Build();
+
+                            mqtt.PublishAsync(mqttErrorMessage).Wait();
+                        }
+                        else
+                        {
+                            var mqttSuccessMessage = new MqttApplicationMessageBuilder()
+                                .WithTopic("hansenberg/user/success")
+                                .WithPayload("Success")
+                                .Build();
+
+                            mqtt.PublishAsync(mqttSuccessMessage).Wait();
+                        }
+
                         break;
                     default:
                         Console.WriteLine($"Unhandled topic: {topic}");

@@ -1,4 +1,5 @@
 ﻿using MqttBroker.Dtos;
+using MqttBroker.Exceptions;
 using MqttBroker.Managers;
 using MqttBroker.Models;
 using System.Text.Json;
@@ -9,16 +10,14 @@ namespace MqttBroker.Service
     {
         private readonly UserManager userManager;
         private readonly CardManager cardManager;
-        private readonly EncryptionService encryptionService;
 
         public UserService(DatabaseManager databaseManager)
         {
             userManager = new UserManager(databaseManager);
             cardManager = new CardManager(databaseManager);
-            encryptionService = new EncryptionService();
         }
 
-        public void Create(string message)
+        public bool Create(string message)
         {
             try
             {
@@ -31,18 +30,27 @@ namespace MqttBroker.Service
                     var userModel = new UserModel
                     {
                         CardID = latestCard.CardID,
-                        Pin = encryptionService.Encrypt(userData.Pin),
+                        Pin = userData.Pin,
                         UserName = userData.UserName,
                         ExpireDate = userData.ExpireDate,
                         IsActive = true
                     };
 
                     var success = userManager.InsertUser(userModel);
+                    return success;
                 }
+
+                return false;
             }
             catch (JsonException)
             {
                 Console.WriteLine("Failed to parse user message as JSON.");
+                return false;
+            }
+            catch (CardAlreadyExistException)
+            {
+                Console.WriteLine("Card ID already exists.");
+                throw;
             }
         }
 

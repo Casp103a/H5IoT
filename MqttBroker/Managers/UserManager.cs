@@ -1,15 +1,19 @@
-﻿using MqttBroker.Models;
-using Microsoft.Data.Sqlite;
+﻿using Microsoft.Data.Sqlite;
+using MqttBroker.Exceptions;
+using MqttBroker.Models;
+using MqttBroker.Service;
 
 namespace MqttBroker.Managers
 {
     internal class UserManager
     {
         private readonly DatabaseManager databaseManager;
+        private readonly EncryptionService encryptionService;
 
         public UserManager(DatabaseManager databaseManager)
         {
             this.databaseManager = databaseManager;
+            encryptionService = new EncryptionService();
         }
 
         public bool InsertUser(UserModel userModel)
@@ -17,6 +21,14 @@ namespace MqttBroker.Managers
             if (userModel == null || string.IsNullOrWhiteSpace(userModel.CardID) || string.IsNullOrWhiteSpace(userModel.Pin))
             {
                 return false;
+            }
+
+            var DoesCardExist = DoesActiceUserHaveCard(userModel.CardID);
+
+            if (DoesCardExist)
+            {
+                Console.WriteLine("Card already exists");
+                throw new CardAlreadyExistException();
             }
 
             try
@@ -28,7 +40,7 @@ namespace MqttBroker.Managers
                 command.CommandText =
                     @"INSERT INTO Users (CardID, Pin, UserName, ExpireDate, IsActive) VALUES (@CardID, @Pin, @UserName, @ExpireDate, @IsActive);";
                 command.Parameters.AddWithValue("@CardID", userModel.CardID);
-                command.Parameters.AddWithValue("@Pin", userModel.Pin);
+                command.Parameters.AddWithValue("@Pin", encryptionService.Encrypt(userModel.Pin));
                 command.Parameters.AddWithValue("@UserName", userModel.UserName ?? string.Empty);
                 command.Parameters.AddWithValue("@ExpireDate", userModel.ExpireDate.HasValue ? userModel.ExpireDate.Value : DBNull.Value);
                 command.Parameters.AddWithValue("@IsActive", userModel.IsActive);
@@ -71,7 +83,7 @@ namespace MqttBroker.Managers
                     return new UserModel
                     {
                         CardID = reader.GetString(0),
-                        Pin = reader.GetString(1),
+                        Pin = encryptionService.Decrypt(reader.GetString(1)),
                         UserName = reader.GetString(2),
                         ExpireDate = reader.IsDBNull(3) ? null : reader.GetDateTime(3),
                         IsActive = reader.GetBoolean(4)
@@ -94,15 +106,46 @@ namespace MqttBroker.Managers
             try
             {
                 if (!user.IsActive)
-                    return false;
-
-                if (user.ExpireDate < DateTime.Now)
                 {
-                    DeactivateUser(cardID);
+                    Console.WriteLine("User is not active");
                     return false;
                 }
 
+                if (user.ExpireDate != null)
+                {
+                    Console.WriteLine($"User Expire Date: {user.ExpireDate}, Now: {DateTime.Now}");
+                    if (user.ExpireDate < DateTime.Now)
+                    {
+                        DeactivateUser(cardID);
+                        return false;
+                    }
+                }
 
+
+
+                var userFromDB = GetUserByCardID(cardID);
+
+                if (userFromDB == null)
+                {
+                    Console.WriteLine("User not found in database");
+                    return false;
+                }
+
+                return userFromDB.Pin == pin;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public bool DoesActiceUserHaveCard(string cardID)
+        {
+            if (string.IsNullOrEmpty(cardID))
+                return false;
+
+            try
+            {
                 using var connection = new SqliteConnection(databaseManager.ConnectionString);
                 connection.Open();
 
@@ -110,9 +153,9 @@ namespace MqttBroker.Managers
                 command.CommandText =
                     @"SELECT COUNT(1)
                       FROM Users
-                      WHERE CardID = @CardID AND Pin = @Pin;";
+                      WHERE CardID = @CardID AND IsActive = 1
+                      LIMIT 1;";
                 command.Parameters.AddWithValue("@CardID", cardID);
-                command.Parameters.AddWithValue("@Pin", pin);
 
                 var result = command.ExecuteScalar();
                 return Convert.ToInt32(result) > 0;

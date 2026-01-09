@@ -13,6 +13,7 @@ namespace UserRegistaionApp
         public MainWindow()
         {
             InitializeComponent();
+            ExpireDatePicker.DisplayDateStart = DateTime.Today;
         }
 
         DateTime lastPublish = DateTime.MinValue;
@@ -23,6 +24,8 @@ namespace UserRegistaionApp
             var userName = UsernameTextBox.Text;
             var pin = PinPasswordBox.Password;
             var confirmPin = ConfirmationPinPasswordBox.Password;
+            var expireDate = ExpireDatePicker.SelectedDate;
+            bool shouldExpire = ExpireCheckBox.IsChecked.HasValue ? ExpireCheckBox.IsChecked.Value : false;
 
             if (!pin.Equals(confirmPin) || string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(pin))
             {
@@ -36,6 +39,7 @@ namespace UserRegistaionApp
 
             var mqttFactory = new MqttClientFactory();
             using var mqttClient = mqttFactory.CreateMqttClient();
+            mqttClient.ApplicationMessageReceivedAsync += MessageReceived;
             var mqttClientOptions = new MqttClientOptionsBuilder().WithTcpServer("192.168.10.50").Build();
 
             try
@@ -49,10 +53,26 @@ namespace UserRegistaionApp
                 return;
             }
 
+            var topics = new[]
+            {
+                "hansenberg/user/success",
+                "hansenberg/user/failed"
+            };
+
+            foreach (var topic in topics)
+            {
+                var topicFilter = mqttFactory.CreateTopicFilterBuilder().WithTopic(topic).WithAtLeastOnceQoS();
+                var mqttSubscribeOptions = mqttFactory.CreateSubscribeOptionsBuilder().WithTopicFilter(topicFilter).Build();
+
+                var response = mqttClient.SubscribeAsync(mqttSubscribeOptions, CancellationToken.None);
+                response.Wait();
+            }
+
             var payload = JsonSerializer.Serialize(new UserDto
             {
                 Pin = pin,
-                UserName = userName
+                UserName = userName,
+                ExpireDate = shouldExpire ? expireDate : null
             });
 
             var message = new MqttApplicationMessageBuilder()
@@ -62,18 +82,27 @@ namespace UserRegistaionApp
 
             var result = mqttClient.PublishAsync(message, CancellationToken.None);
             result.Wait();
+        }
 
-            if (result.Result.IsSuccess)
+        private async Task MessageReceived(MqttApplicationMessageReceivedEventArgs args)
+        {
+            switch (args.ApplicationMessage.Topic)
             {
-                lastPublish = DateTime.Now;
-                UsernameTextBox.Text = string.Empty;
-                PinPasswordBox.Password = string.Empty;
-                ConfirmationPinPasswordBox.Password = string.Empty;
-                MessageBox.Show("User registered successfully!", "User registration", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                MessageBox.Show("Failed to register user.", "User registration", MessageBoxButton.OK, MessageBoxImage.Error);
+                case "hansenberg/user/success":
+                    lastPublish = DateTime.Now;
+                    UsernameTextBox.Text = string.Empty;
+                    PinPasswordBox.Password = string.Empty;
+                    ConfirmationPinPasswordBox.Password = string.Empty;
+                    ExpireCheckBox.IsChecked = false;
+                    ExpireDatePicker.SelectedDate = null;
+                    MessageBox.Show("User registered successfully!", "User registration", MessageBoxButton.OK, MessageBoxImage.Information);
+                    break;
+                case "hansenberg/user/failed":
+                    MessageBox.Show($"Failed to register user, \ndue to: {args.ApplicationMessage.Payload}.", "User registration", MessageBoxButton.OK, MessageBoxImage.Error);
+                    break;
+
+                default:
+                    break;
             }
         }
 
