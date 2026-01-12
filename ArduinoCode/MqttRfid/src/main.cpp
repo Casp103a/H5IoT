@@ -18,13 +18,19 @@ String MqttClientId = "";       // Will be set to unique ID in setup
 const char MqttUsername[] = ""; // Change if it's required, empty if it's not required
 const char MqttPassword[] = ""; // Change if it's required, empty if it's not required
 const char PublishTopic[] = "hansenberg/card";
+const char PublishTopicDeactivateCard[] = "hansenberg/card/deactivate";
 
 long LastPublish = 0;
 int TimeBetweenEachPublish = 2500;
+long TimeSinceLastButtonPress = 0;
+int MaxTimeBeforeIgnore = 3000;
 int BlueLedOnTime = 2000;
 
 const int Red_Led_Pin = 4;
 const int Blue_Led_Pin = 8;
+const int Button_Pin = 5;
+
+bool DeactivateCard = false;
 
 // 0x28 is i2c address on SDA. Check your address with i2cscanner if not match.
 MFRC522_I2C mfrc522(0x28, RST_PIN); // Create MFRC522 instance.
@@ -35,6 +41,7 @@ bool connectToWiFi();
 bool ConnectToMqtt();
 void ShowReaderDetails();
 bool SendCardUID(char *cardUID);
+bool DeactivateCardFunc(char *cardUID);
 
 void setup()
 {
@@ -43,6 +50,7 @@ void setup()
 
   pinMode(Blue_Led_Pin, OUTPUT);
   pinMode(Red_Led_Pin, OUTPUT);
+  pinMode(Button_Pin, INPUT);
 
   Wire.begin(); // Initialize I2C
   mfrc522.PCD_Init();
@@ -72,6 +80,13 @@ void setup()
 
 void loop()
 {
+  if (digitalRead(Button_Pin) == HIGH)
+  {
+    DeactivateCard = true;
+    TimeSinceLastButtonPress = millis();
+    Serial.println("Button pressed");
+  }
+
   long currentTime = millis();
   if (currentTime - LastPublish < BlueLedOnTime)
   {
@@ -105,7 +120,17 @@ void loop()
   }
   Serial.println();
 
-  SendCardUID(cardUID);
+  if (DeactivateCard)
+  {
+    Serial.println("Should deactivate");
+    DeactivateCardFunc(cardUID);
+    DeactivateCard = false;
+  }
+  else
+  {
+    Serial.println("Shouldn't deactivate");
+    SendCardUID(cardUID);
+  }
 }
 
 bool connectToWiFi()
@@ -183,6 +208,11 @@ bool SendCardUID(char *cardUID)
     return false;
   }
 
+  if (!mqtt.connected())
+  {
+    ConnectToMqtt();
+  }
+
   DynamicJsonDocument message(200);
   message["CardID"] = cardUID;
   message["UniqueID"] = MqttClientId;
@@ -201,5 +231,39 @@ bool SendCardUID(char *cardUID)
   }
 
   Serial.println("Published messages");
+  LastPublish = millis();
+}
+
+bool DeactivateCardFunc(char *cardUID)
+{
+  long currentTime = millis();
+  if (currentTime - TimeSinceLastButtonPress > MaxTimeBeforeIgnore)
+  {
+    return false;
+  }
+
+  if (!mqtt.connected())
+  {
+    ConnectToMqtt();
+  }
+
+  DynamicJsonDocument message(200);
+  message["CardID"] = cardUID;
+  message["UniqueID"] = MqttClientId;
+
+  char messageBuffer[512];
+  serializeJson(message, messageBuffer);
+
+  Serial.println("Publishing deactivate messages");
+  bool success = mqtt.publish(PublishTopicDeactivateCard, messageBuffer);
+
+  if (!success)
+  {
+    Serial.println("MQTT publish failed!");
+    digitalWrite(Red_Led_Pin, HIGH);
+    return false;
+  }
+
+  Serial.println("Published deactivate messages");
   LastPublish = millis();
 }

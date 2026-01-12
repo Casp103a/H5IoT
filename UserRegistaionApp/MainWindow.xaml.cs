@@ -13,11 +13,12 @@ namespace UserRegistaionApp
         public MainWindow()
         {
             InitializeComponent();
-            ExpireDatePicker.DisplayDateStart = DateTime.Today;
+            //ExpireDatePicker.DisplayDateStart = DateTime.Today;
         }
 
         DateTime lastPublish = DateTime.MinValue;
         TimeSpan publishInterval = TimeSpan.FromSeconds(15);
+        IMqttClient mqttClient;
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
@@ -38,7 +39,7 @@ namespace UserRegistaionApp
             }
 
             var mqttFactory = new MqttClientFactory();
-            using var mqttClient = mqttFactory.CreateMqttClient();
+            mqttClient = mqttFactory.CreateMqttClient();
             mqttClient.ApplicationMessageReceivedAsync += MessageReceived;
             var mqttClientOptions = new MqttClientOptionsBuilder().WithTcpServer("192.168.10.50").Build();
 
@@ -86,24 +87,26 @@ namespace UserRegistaionApp
 
         private async Task MessageReceived(MqttApplicationMessageReceivedEventArgs args)
         {
-            switch (args.ApplicationMessage.Topic)
+            await Dispatcher.InvokeAsync(() =>
             {
-                case "hansenberg/user/success":
-                    lastPublish = DateTime.Now;
-                    UsernameTextBox.Text = string.Empty;
-                    PinPasswordBox.Password = string.Empty;
-                    ConfirmationPinPasswordBox.Password = string.Empty;
-                    ExpireCheckBox.IsChecked = false;
-                    ExpireDatePicker.SelectedDate = null;
-                    MessageBox.Show("User registered successfully!", "User registration", MessageBoxButton.OK, MessageBoxImage.Information);
-                    break;
-                case "hansenberg/user/failed":
-                    MessageBox.Show($"Failed to register user, \ndue to: {args.ApplicationMessage.Payload}.", "User registration", MessageBoxButton.OK, MessageBoxImage.Error);
-                    break;
-
-                default:
-                    break;
-            }
+                switch (args.ApplicationMessage.Topic)
+                {
+                    case "hansenberg/user/success":
+                        lastPublish = DateTime.Now;
+                        UsernameTextBox.Text = string.Empty;
+                        PinPasswordBox.Password = string.Empty;
+                        ConfirmationPinPasswordBox.Password = string.Empty;
+                        ExpireCheckBox.IsChecked = false;
+                        ExpireDatePicker.SelectedDate = null;
+                        MessageBox.Show("User registered successfully!", "User registration", MessageBoxButton.OK, MessageBoxImage.Information);
+                        break;
+                    case "hansenberg/user/failed":
+                        MessageBox.Show($"Failed to register user, \ndue to: {args.ApplicationMessage.ConvertPayloadToString()}.", "User registration", MessageBoxButton.OK, MessageBoxImage.Error);
+                        break;
+                    default:
+                        break;
+                }
+            });
         }
 
         private void PinTextBox_PreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)

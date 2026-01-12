@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:UserRegistaionApp"
         mc:Ignorable="d"
         Title="User Registration"
-        Height="650"
+        Height="700"
         Width="400"
         Background="#F7F8FA"
         WindowStartupLocation="CenterScreen"

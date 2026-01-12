@@ -1,7 +1,10 @@
-﻿using MqttBroker.Exceptions;
+﻿using MqttBroker.Dtos;
+using MqttBroker.Exceptions;
 using MqttBroker.Managers;
 using MqttBroker.Service;
 using MQTTnet;
+using System.Net.NetworkInformation;
+using System.Text.Json;
 
 namespace MqttBroker
 {
@@ -11,6 +14,7 @@ namespace MqttBroker
         private static PinService pinService = null!;
         private static CardService cardService = null!;
         private static UserService userService = null!;
+        private static ConfigurationService configurationService = null!;
         private static IMqttClient mqtt;
 
         static void Main(string[] args)
@@ -39,6 +43,7 @@ namespace MqttBroker
                 "hansenberg/card",
                 "hansenberg/card/deactivate",
                 "hansenberg/user/register",
+                "hansenberg/configuration/temp/get",
             };
 
             foreach (var topic in topics)
@@ -73,6 +78,7 @@ namespace MqttBroker
             try
             {
                 databaseManager = new DatabaseManager();
+                configurationService = new ConfigurationService();
                 userService = new UserService(databaseManager);
                 pinService = new PinService(mqttClient, databaseManager);
                 cardService = new CardService(databaseManager);
@@ -131,23 +137,40 @@ namespace MqttBroker
 
                         if (failed)
                         {
+                            Console.WriteLine("User registration failed.");
                             var mqttErrorMessage = new MqttApplicationMessageBuilder()
                                 .WithTopic("hansenberg/user/failed")
                                 .WithPayload(errorMessage)
                                 .Build();
 
                             mqtt.PublishAsync(mqttErrorMessage).Wait();
+                            Console.WriteLine("Success message published.");
                         }
                         else
                         {
+                            Console.WriteLine("User registration succeeded.");
                             var mqttSuccessMessage = new MqttApplicationMessageBuilder()
                                 .WithTopic("hansenberg/user/success")
                                 .WithPayload("Success")
                                 .Build();
 
                             mqtt.PublishAsync(mqttSuccessMessage).Wait();
+                            Console.WriteLine("Success message published.");
                         }
 
+                        break;
+                    case "hansenberg/configuration/temp/get":
+                        Console.WriteLine("Got asked for config");
+                        var config = configurationService.GetTemporaryConfiguration();
+                        var payload = JsonSerializer.Serialize(config);
+
+                        var publishMessage = new MqttApplicationMessageBuilder()
+                            .WithTopic("hansenberg/configuration/temp")
+                            .WithPayload(payload)
+                            .Build();
+
+                        mqtt.PublishAsync(publishMessage, CancellationToken.None).Wait();
+                        Console.WriteLine("Sent config.");
                         break;
                     default:
                         Console.WriteLine($"Unhandled topic: {topic}");
