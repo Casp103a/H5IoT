@@ -1,0 +1,12 @@
+﻿services:
+  mqttbroker:
+    build:
+      dockerfile: Dockerfile
+      platforms: 
+      - linux/arm64
+    image: mqttbroker
+    restart: unless-stopped
+    platform: linux/arm64
+    volumes:
+      - /home/admin/myapp/data:/app/data
+    container_name: mqttbroker

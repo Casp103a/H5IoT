@@ -14,9 +14,27 @@ namespace MqttBroker
         private static UserService userService = null!;
         private static ConfigurationService configurationService = null!;
         private static IMqttClient mqtt;
+        private static readonly ManualResetEventSlim ShutdownEvent = new(false);
+        private static readonly ManualResetEventSlim WaitingForInternet = new(false);
+        private static Task WaitForInternetTask;
 
         static void Main(string[] args)
         {
+            Action actiontask = () =>
+            {
+                while (!System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable())
+                {
+                    Console.WriteLine("Waiting for internet connection...");
+                    Thread.Sleep(1000);
+                }
+                Console.WriteLine("Internet connection available.");
+                WaitingForInternet.Set();
+            };
+
+            WaitForInternetTask = new Task(actiontask);
+            WaitForInternetTask.Start();
+            WaitingForInternet.Wait();
+
             var mqttFactory = new MqttClientFactory();
             using var mqttClient = mqttFactory.CreateMqttClient();
             var mqttClientOptions = new MqttClientOptionsBuilder().WithTcpServer("192.168.10.50").Build();
@@ -60,8 +78,16 @@ namespace MqttBroker
             InitializeManagers(mqttClient);
             mqtt = mqttClient;
 
-            Console.WriteLine("Press any key to exit.");
-            Console.ReadLine();
+            Console.CancelKeyPress += (sender, eventArgs) =>
+            {
+                Console.WriteLine("Shutdown signal received.");
+                ShutdownEvent.Set();
+                eventArgs.Cancel = true; // Prevent immediate process termination
+            };
+
+            Console.WriteLine("Broker running. Press Ctrl+C to exit or stop the container.");
+
+            ShutdownEvent.Wait();
 
             // Unsubscribe from all topics
             foreach (var topic in topics)
