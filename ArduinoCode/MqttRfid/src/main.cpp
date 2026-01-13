@@ -17,10 +17,10 @@ const int SERVER_PORT = 1883;
 String MqttClientId = "";       // Will be set to unique ID in setup
 const char MqttUsername[] = ""; // Change if it's required, empty if it's not required
 const char MqttPassword[] = ""; // Change if it's required, empty if it's not required
-const char PublishTopic[] = "hansenberg/card";
+const char PublishTempTopic[] = "hansenberg/card";
 const char PublishTopicDeactivateCard[] = "hansenberg/card/deactivate";
 
-long LastPublish = 0;
+long LastTempPublish = 0;
 int TimeBetweenEachPublish = 2500;
 long TimeSinceLastButtonPress = 0;
 int MaxTimeBeforeIgnore = 3000;
@@ -80,6 +80,11 @@ void setup()
 
 void loop()
 {
+  if (!mqtt.connected())
+  {
+    ConnectToMqtt();
+  }
+
   if (digitalRead(Button_Pin) == HIGH)
   {
     DeactivateCard = true;
@@ -88,7 +93,7 @@ void loop()
   }
 
   long currentTime = millis();
-  if (currentTime - LastPublish < BlueLedOnTime)
+  if (currentTime - LastTempPublish < BlueLedOnTime)
   {
     digitalWrite(Blue_Led_Pin, HIGH);
     digitalWrite(Red_Led_Pin, LOW);
@@ -203,14 +208,9 @@ bool ConnectToMqtt()
 bool SendCardUID(char *cardUID)
 {
   long currentTime = millis();
-  if (currentTime - LastPublish < TimeBetweenEachPublish)
+  if (currentTime - LastTempPublish < TimeBetweenEachPublish)
   {
     return false;
-  }
-
-  if (!mqtt.connected())
-  {
-    ConnectToMqtt();
   }
 
   DynamicJsonDocument message(200);
@@ -221,7 +221,7 @@ bool SendCardUID(char *cardUID)
   serializeJson(message, messageBuffer);
 
   Serial.println("Publishing messages");
-  bool success = mqtt.publish(PublishTopic, messageBuffer);
+  bool success = mqtt.publish(PublishTempTopic, messageBuffer);
 
   if (!success)
   {
@@ -231,7 +231,7 @@ bool SendCardUID(char *cardUID)
   }
 
   Serial.println("Published messages");
-  LastPublish = millis();
+  LastTempPublish = millis();
 }
 
 bool DeactivateCardFunc(char *cardUID)
@@ -240,11 +240,6 @@ bool DeactivateCardFunc(char *cardUID)
   if (currentTime - TimeSinceLastButtonPress > MaxTimeBeforeIgnore)
   {
     return false;
-  }
-
-  if (!mqtt.connected())
-  {
-    ConnectToMqtt();
   }
 
   DynamicJsonDocument message(200);
@@ -265,5 +260,5 @@ bool DeactivateCardFunc(char *cardUID)
   }
 
   Serial.println("Published deactivate messages");
-  LastPublish = millis();
+  LastTempPublish = millis();
 }
