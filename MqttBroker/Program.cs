@@ -1,9 +1,7 @@
-﻿using MqttBroker.Dtos;
-using MqttBroker.Exceptions;
+﻿using MqttBroker.Exceptions;
 using MqttBroker.Managers;
 using MqttBroker.Service;
 using MQTTnet;
-using System.Net.NetworkInformation;
 using System.Text.Json;
 
 namespace MqttBroker
@@ -43,7 +41,8 @@ namespace MqttBroker
                 "hansenberg/card",
                 "hansenberg/card/deactivate",
                 "hansenberg/user/register",
-                "hansenberg/configuration/temp/get",
+                "hansenberg/configuration/dht/get",
+                "hansenberg/system/time/get",
             };
 
             foreach (var topic in topics)
@@ -159,18 +158,26 @@ namespace MqttBroker
                         }
 
                         break;
-                    case "hansenberg/configuration/temp/get":
+                    case "hansenberg/configuration/dht/get":
                         Console.WriteLine("Got asked for config");
                         var config = configurationService.GetTemporaryConfiguration();
                         var payload = JsonSerializer.Serialize(config);
 
                         var publishMessage = new MqttApplicationMessageBuilder()
-                            .WithTopic("hansenberg/configuration/temp")
+                            .WithTopic("hansenberg/configuration/dht")
                             .WithPayload(payload)
                             .Build();
 
                         mqtt.PublishAsync(publishMessage, CancellationToken.None).Wait();
                         Console.WriteLine("Sent config.");
+                        break;
+                    case "hansenberg/system/time/get":
+                        var currentTime = DateTime.Now;
+                        var timeMessage = new MqttApplicationMessageBuilder()
+                            .WithTopic("hansenberg/system/time")
+                            .WithPayload(currentTime.ToString("o"))
+                            .Build();
+                        mqtt.PublishAsync(timeMessage, CancellationToken.None).Wait();
                         break;
                     default:
                         Console.WriteLine($"Unhandled topic: {topic}");

@@ -1,6 +1,6 @@
 ﻿namespace MqttBroker.Dtos
 {
-    internal class TemperaturConfigurationDto
+    internal class DHTConfigurationDto
     {
         /// <summary>
         /// It is defined in milliseconds
@@ -11,5 +11,10 @@
         /// The temp in celsius that should not be exceeded
         /// </summary>
         public int MaxAllowedTemperatur { get; set; }
+
+        /// <summary>
+        /// The humidity in percentage that should not be exceeded
+        /// </summary>
+        public int MaxAllowedHumidity { get; set; }
     }
 }

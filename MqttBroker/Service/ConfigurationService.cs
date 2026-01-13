@@ -4,12 +4,13 @@ namespace MqttBroker.Service
 {
     internal class ConfigurationService
     {
-        public TemperaturConfigurationDto GetTemporaryConfiguration()
+        public DHTConfigurationDto GetTemporaryConfiguration()
         {
-            return new TemperaturConfigurationDto
+            return new DHTConfigurationDto
             {
                 TimeBetweenSample = 10000,
-                MaxAllowedTemperatur = 28
+                MaxAllowedTemperatur = 26,
+                MaxAllowedHumidity = 60
             };
         }
     }
