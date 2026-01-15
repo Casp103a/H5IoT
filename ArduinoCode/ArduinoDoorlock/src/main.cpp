@@ -30,6 +30,8 @@ const char MQTT_PASSWORD[] = ""; // Change if required
 const char DOOR_UNLOCK_TOPIC[] = "hansenberg/door/unlock";
 const char TIME_RESPONSE_TOPIC[] = "hansenberg/system/time";
 const char TIME_REQUEST_TOPIC[] = "hansenberg/system/time/get";
+const char GET_DOOR_CONFIG_TOPIC[] = "hansenberg/configuration/door/get";
+const char SUBSCRIBE_DOOR_CONFIG_TOPIC[] = "hansenberg/configuration/door";
 const char PUBLISH_ALERT_TOPIC[] = "hansenberg/alert";
 
 WiFiClient network;
@@ -46,8 +48,8 @@ const unsigned long TRIPLE_CLICK_WINDOW = 2000; // 2 seconds for triple-click de
 const unsigned long ALARM_FLASH_INTERVAL = 500; // Flash every 500ms
 
 // Working hours configuration
-const int WORK_START_HOUR = 8;  // 8:00
-const int WORK_END_HOUR = 18;   // 18:00
+int WORK_START_HOUR = 8;  // 8:00
+int WORK_END_HOUR = 18;   // 18:00
 
 // Time synchronization state
 struct tm timeInfo;
@@ -89,6 +91,7 @@ void onMqttMessage(String &topic, String &payload);
 void handleDoorUnlockCommand();
 void setDoorState(bool locked);
 void SendAlert(String alertMessage, String alertType);
+void GetConfiguration();
 void requestTime();
 void parseTimeFromMqtt(String &payload);
 void parseTime(const String &payload);
@@ -155,6 +158,8 @@ void setup() {
   // Serial.println(DOOR_UNLOCK_TOPIC);
   // Serial.print("Subscribed to: ");
   // Serial.println(TIME_RESPONSE_TOPIC);
+
+  GetConfiguration();
   
   // Request initial time
   delay(1000); // Give MQTT time to settle
@@ -264,6 +269,18 @@ void onMqttMessage(String &topic, String &payload) {
   if (topic == DOOR_UNLOCK_TOPIC) {
     handleDoorUnlockCommand();
   }
+
+  if (topic == SUBSCRIBE_DOOR_CONFIG_TOPIC) 
+  {
+    Serial.println("Received door configuration update via MQTT");
+    StaticJsonDocument<256> doc;
+    DeserializationError error = deserializeJson(doc, payload);
+
+    WORK_START_HOUR = doc["StartTime"];
+    WORK_END_HOUR = doc["EndTime"];
+
+    mqtt.unsubscribe(SUBSCRIBE_DOOR_CONFIG_TOPIC);
+  }
 }
 
 void handleDoorUnlockCommand() {
@@ -328,6 +345,13 @@ void SendAlert(String alertMessage, String alertType) {
     // Serial.println("MQTT publish failed!");
     return;
   }
+}
+
+void GetConfiguration() 
+{
+  mqtt.subscribe(SUBSCRIBE_DOOR_CONFIG_TOPIC);
+
+  bool success = mqtt.publish(GET_DOOR_CONFIG_TOPIC, "Get configuration");
 }
 
 void requestTime() {
