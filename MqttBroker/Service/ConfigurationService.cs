@@ -23,5 +23,11 @@ namespace MqttBroker.Service
             var configurations = configurationManager.GetConfigurations();
             return configurations.CoolingConfig;
         }
+
+        public DoorConfigurationDto GetDoorConfiguration()
+        {
+            var configurations = configurationManager.GetConfigurations();
+            return configurations.DoorConfig;
+        }
     }
 }
