@@ -15,6 +15,9 @@ namespace MqttBroker.Managers
 
         private void SetupDatabase()
         {
+            if (!DoesDatabaseExist())
+                CreateDatabase();
+
             if (!CheckIfPinTableExists())
                 CreatePinTable();
 
@@ -25,7 +28,37 @@ namespace MqttBroker.Managers
                 CreateUserTable();
         }
 
-        //This will create the pin table base the on the PinModel
+        private bool DoesDatabaseExist()
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            try
+            {
+                connection.Open();
+                connection.Close();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void CreateDatabase()
+        {
+            try
+            {
+                if (!File.Exists("data/mqttbroker.db"))
+                {
+                    File.Create("data/mqttbroker.db").Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to create database file: {ex.Message}");
+                return;
+            }
+        }
+
         private void CreatePinTable()
         {
             using var connection = new SqliteConnection(ConnectionString);

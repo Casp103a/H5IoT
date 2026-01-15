@@ -1,17 +1,27 @@
 ﻿using MqttBroker.Dtos;
+using MqttBroker.Managers;
 
 namespace MqttBroker.Service
 {
     internal class ConfigurationService
     {
-        public DHTConfigurationDto GetTemporaryConfiguration()
+        private readonly ConfigurationManager configurationManager;
+        
+        public ConfigurationService()
         {
-            return new DHTConfigurationDto
-            {
-                TimeBetweenSample = 10000,
-                MaxAllowedTemperatur = 26,
-                MaxAllowedHumidity = 60
-            };
+            this.configurationManager = new();
+        }
+
+        public DHTConfigurationDto GetDHTConfiguration()
+        {
+            var configurations = configurationManager.GetConfigurations();
+            return configurations.DHTConfig;
+        }
+
+        public CoolingConfigurationDto GetCoolingConfiguration()
+        {
+            var configurations = configurationManager.GetConfigurations();
+            return configurations.CoolingConfig;
         }
     }
 }

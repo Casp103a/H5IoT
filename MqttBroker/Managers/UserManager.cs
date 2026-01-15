@@ -73,7 +73,7 @@ namespace MqttBroker.Managers
                 command.CommandText =
                     @"SELECT CardID, Pin, UserName, ExpireDate, IsActive
                       FROM Users
-                      WHERE CardID = @CardID
+                      WHERE CardID = @CardID AND IsActive = 1
                       LIMIT 1;";
                 command.Parameters.AddWithValue("@CardID", cardID);
 
@@ -178,13 +178,14 @@ namespace MqttBroker.Managers
                 command.CommandText =
                     @"UPDATE Users
                       SET IsActive = 0
-                      WHERE CardID = @CardID;";
+                      WHERE CardID = @CardID AND IsActive = 1;";
                 command.Parameters.AddWithValue("@CardID", cardID);
                 int rowsAffected = command.ExecuteNonQuery();
                 return rowsAffected > 0;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"Failed to deactivate user: {ex.Message}");
                 return false;
             }
         }

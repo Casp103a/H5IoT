@@ -60,7 +60,10 @@ namespace MqttBroker
                 "hansenberg/card/deactivate",
                 "hansenberg/user/register",
                 "hansenberg/configuration/dht/get",
+                "hansenberg/configuration/fan/get",
                 "hansenberg/system/time/get",
+                "hansenberg/alert",
+                "hansenberg/dht"
             };
 
             foreach (var topic in topics)
@@ -139,7 +142,11 @@ namespace MqttBroker
                         cardService.Handle(message, clientId);
                         break;
                     case "hansenberg/card/deactivate":
-                        userService.Deactivate(message);
+                        var isDeactived = userService.Deactivate(message);
+                        if (isDeactived)
+                            Console.WriteLine("Card deactivated successfully.");
+                        else
+                            Console.WriteLine("Failed to deactivate card.");
                         break;
                     case "hansenberg/user/register":
                         bool failed = false;
@@ -186,7 +193,7 @@ namespace MqttBroker
                         break;
                     case "hansenberg/configuration/dht/get":
                         Console.WriteLine("Got asked for config");
-                        var config = configurationService.GetTemporaryConfiguration();
+                        var config = configurationService.GetDHTConfiguration();
                         var payload = JsonSerializer.Serialize(config);
 
                         var publishMessage = new MqttApplicationMessageBuilder()
@@ -197,6 +204,19 @@ namespace MqttBroker
                         mqtt.PublishAsync(publishMessage, CancellationToken.None).Wait();
                         Console.WriteLine("Sent config.");
                         break;
+                    case "hansenberg/configuration/fan/get":
+                        Console.WriteLine("Got asked for config");
+                        var coolingConfig = configurationService.GetCoolingConfiguration();
+                        var json = JsonSerializer.Serialize(coolingConfig);
+
+                        var publishConfigMessage = new MqttApplicationMessageBuilder()
+                            .WithTopic("hansenberg/configuration/fan")
+                            .WithPayload(json)
+                            .Build();
+
+                        mqtt.PublishAsync(publishConfigMessage, CancellationToken.None).Wait();
+                        Console.WriteLine("Sent config.");
+                        break;
                     case "hansenberg/system/time/get":
                         var currentTime = DateTime.Now;
                         var timeMessage = new MqttApplicationMessageBuilder()
@@ -204,6 +224,9 @@ namespace MqttBroker
                             .WithPayload(currentTime.ToString("o"))
                             .Build();
                         mqtt.PublishAsync(timeMessage, CancellationToken.None).Wait();
+                        break;
+                    case "hansenberg/alert":
+
                         break;
                     default:
                         Console.WriteLine($"Unhandled topic: {topic}");

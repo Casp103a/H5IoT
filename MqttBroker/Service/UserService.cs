@@ -54,9 +54,10 @@ namespace MqttBroker.Service
             }
         }
 
-        public void Deactivate(string cardID)
+        public bool Deactivate(string cardID)
         {
-            userManager.DeactivateUser(cardID);
+            var card = JsonSerializer.Deserialize<CardDto>(cardID);
+            return userManager.DeactivateUser(card.CardID);
         }
     }
 }

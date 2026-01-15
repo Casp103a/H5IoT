@@ -27,7 +27,6 @@ namespace MqttBroker.Service
                     {
                         Timestamp = DateTime.UtcNow,
                         CardID = cardData.CardID,
-                        CardName = "" // Default name if not provided
                     };
 
                     var success = cardManager.InsertCard(cardModel);                 
