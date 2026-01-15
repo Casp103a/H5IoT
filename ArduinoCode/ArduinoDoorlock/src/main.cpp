@@ -30,6 +30,7 @@ const char MQTT_PASSWORD[] = ""; // Change if required
 const char DOOR_UNLOCK_TOPIC[] = "hansenberg/door/unlock";
 const char TIME_RESPONSE_TOPIC[] = "hansenberg/system/time";
 const char TIME_REQUEST_TOPIC[] = "hansenberg/system/time/get";
+const char PUBLISH_ALERT_TOPIC[] = "hansenberg/alert";
 
 WiFiClient network;
 MQTTClient mqtt(256);
@@ -87,6 +88,7 @@ void connectMQTT();
 void onMqttMessage(String &topic, String &payload);
 void handleDoorUnlockCommand();
 void setDoorState(bool locked);
+void SendAlert(String alertMessage, String alertType);
 void requestTime();
 void parseTimeFromMqtt(String &payload);
 void parseTime(const String &payload);
@@ -270,6 +272,7 @@ void handleDoorUnlockCommand() {
     isMqttUnlockAuthorized = true; // Authorize button usage
     setDoorState(false);
     doorUnlockTime = millis(); // Record when door was unlocked
+    SendAlert("Door unlocked via MQTT", "DoorAccess");
     // Serial.println("Door unlocked via MQTT - Button now authorized");
     // Serial.print("Will auto-lock in ");
     // Serial.print(AUTO_LOCK_DURATION / 1000);
@@ -280,6 +283,7 @@ void handleDoorUnlockCommand() {
       outsideHoursAlarm = true;
       isAlarmActive = true;
       currentAlarmReason = "Access off hours";
+      SendAlert("Door access outside working hours: " + getCurrentTimeString(), "SecurityViolation");
       // Serial.println("Outside hours access detected!");
     }
   } else {
@@ -306,6 +310,23 @@ void setDoorState(bool locked) {
     // if (stateChanged) {
     //   Serial.println("Door state: UNLOCKED (Green LED ON)");
     // }
+  }
+}
+
+void SendAlert(String alertMessage, String alertType) {
+  DynamicJsonDocument message(200);
+  message["Message"] = alertMessage;
+  message["DeviceID"] = mqttClientId;
+  message["AlertType"] = alertType;
+
+  char messageBuffer[512];
+  serializeJson(message, messageBuffer);
+
+  bool success = mqtt.publish(PUBLISH_ALERT_TOPIC, messageBuffer);
+
+  if (!success) {
+    // Serial.println("MQTT publish failed!");
+    return;
   }
 }
 
@@ -491,6 +512,7 @@ void handleButtonInput() {
     if (!isAlarmActive) {
       isAlarmActive = true;
       currentAlarmReason = "Door open too long";
+      SendAlert("Door held open too long: " + String((currentTime - doorHeldOpenStartTime) / 1000) + " seconds", "SecurityViolation");
       // Serial.println("ALARM: Door has been held open too long!");
     }
   }
@@ -505,10 +527,12 @@ void processButtonPress(bool currentButtonState, unsigned long currentTime) {
       isButtonPressed = true;
       buttonPressTime = currentTime;
       setDoorState(false); // Unlock door when button pressed
+      SendAlert("Door opened via button", "DoorAccess");
       // Serial.println("Button pressed - Door held open");
-    } //else {
+    } else {
+      SendAlert("Unauthorized button press attempt", "SecurityViolation");
       // Serial.println("Button press ignored - MQTT unlock required first");
-    //}
+    }
   }
 }
 
@@ -546,11 +570,13 @@ void toggleSpecialCase() {
     isAlarmActive = false;
     outsideHoursAlarm = false;
     currentAlarmReason = "";
+    SendAlert("Special case mode activated - Security bypassed", "SystemAlert");
     // Serial.println("SPECIAL CASE ACTIVATED - All time restrictions bypassed");
     delay(2000);
   } else {
     // Deactivate special case
     isSpecialCaseActive = false;
+    SendAlert("Special case mode deactivated - Normal security resumed", "SystemAlert");
     // Serial.println("SPECIAL CASE DEACTIVATED - Normal operation resumed");
     delay(2000);
     // Return to normal locked state
@@ -591,6 +617,7 @@ void handleDoorAutoLock() {
     if (isDoorHeldOpen) {
       isAlarmActive = true;
       currentAlarmReason = "Door held open";
+      SendAlert("Door held open after auto-lock timeout", "SecurityViolation");
       // Serial.println("ALARM: Door held open after auto-lock timeout!");
       // Serial.print("Button state: ");
       // Serial.println(digitalRead(DOOR_BUTTON_PIN) == HIGH ? "PRESSED" : "RELEASED");
