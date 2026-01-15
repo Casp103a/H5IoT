@@ -244,6 +244,7 @@ void GetConfiguration()
   if (success)
   {
     // Serial.println("successed asking for config");
+    digitalWrite(Red_Led_Pin, LOW);    
   }
   else
   {
