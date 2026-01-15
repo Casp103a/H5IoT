@@ -2,7 +2,6 @@
 using MqttBroker.Managers;
 using MqttBroker.Service;
 using MQTTnet;
-using System.Reflection;
 using System.Text.Json;
 
 namespace MqttBroker
@@ -64,6 +63,7 @@ namespace MqttBroker
                 "hansenberg/user/register",
                 "hansenberg/configuration/dht/get",
                 "hansenberg/configuration/fan/get",
+                "hansenberg/configuration/door/get",
                 "hansenberg/system/time/get",
                 "hansenberg/alert",
                 "hansenberg/dht"
@@ -219,6 +219,19 @@ namespace MqttBroker
                             .Build();
 
                         mqtt.PublishAsync(publishConfigMessage, CancellationToken.None).Wait();
+                        Console.WriteLine("Sent config.");
+                        break;
+                    case "hansenberg/configuration/door/get":
+                        Console.WriteLine("Got asked for config");
+                        var doorConfig = configurationService.GetCoolingConfiguration();
+                        var doorjson = JsonSerializer.Serialize(doorConfig);
+
+                        var publishDoorConfigMessage = new MqttApplicationMessageBuilder()
+                            .WithTopic("hansenberg/configuration/door")
+                            .WithPayload(doorjson)
+                            .Build();
+
+                        mqtt.PublishAsync(publishDoorConfigMessage, CancellationToken.None).Wait();
                         Console.WriteLine("Sent config.");
                         break;
                     case "hansenberg/system/time/get":

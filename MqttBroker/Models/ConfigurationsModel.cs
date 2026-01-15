@@ -6,5 +6,6 @@ namespace MqttBroker.Models
     {
         public DHTConfigurationDto DHTConfig { get; set; } = new();
         public CoolingConfigurationDto CoolingConfig { get; set; } = new();
+        public DoorConfigurationDto DoorConfig { get; set; } = new();
     }
 }
