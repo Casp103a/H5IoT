@@ -14,8 +14,7 @@ const int SERVER_PORT = 1883;
 String MqttClientId = "";       // Will be set to unique ID in setup
 const char MqttUsername[] = ""; // Change if it's required, empty if it's not required
 const char MqttPassword[] = ""; // Change if it's required, empty if it's not required
-const char PublishTempTopic[] = "hansenberg/temp";
-const char PublishHumidityTopic[] = "hansenberg/humidity";
+const char PublishDHTTopic[] = "hansenberg/dht";
 const char GetTempConfigTopic[] = "hansenberg/configuration/dht/get";
 const char SubscribeTopic[] = "hansenberg/configuration/dht";
 
@@ -29,7 +28,7 @@ const int DHT_PIN = 2;
 const int DHT_TYPE = DHT22;
 
 // Config
-long LastTempPublish;
+long LastPublish;
 long LastHumidityPublish;
 int TimeBetweenEachPublish = 10000;
 int MaxAllowedTemperatur;
@@ -41,12 +40,10 @@ DHT dht(DHT_PIN, DHT_TYPE);
 
 bool connectToWiFi();
 bool ConnectToMqtt();
-void HandleTemp();
-void CheckTemp(float temp);
-void SendTemp(float temp);
-void HandleHumidity();
-void CheckHumidity(float humidity);
-void SendHumidity(float humidity);
+void HandleDHT();
+void CheckTemp(float temp, float humidity);
+void SendDHT(float temp, float humidity);
+void CheckHumidity(float humidity, float temp);
 void GetConfiguration();
 void OnMessagedRecived(String &topic, String &payload);
 
@@ -73,7 +70,7 @@ void setup()
 
   if (!connected || !mqttConneted)
   {
-    Serial.println("Failed To Connect");
+    // Serial.println("Failed To Connect");
     digitalWrite(Red_Led_Pin, HIGH);
     return;
   }
@@ -96,29 +93,28 @@ void loop()
     GotFirstConfig = true;
   }
 
-  HandleTemp();
-  HandleHumidity();
+  HandleDHT();
 }
 
 bool connectToWiFi()
 {
-  Serial.print("Connecting to WiFi");
+  // Serial.print("Connecting to WiFi");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   unsigned long startAttempt = millis();
   while (WiFi.status() != WL_CONNECTED)
   {
-    Serial.print(".");
+    // Serial.print(".");
     delay(500);
 
     if (millis() - startAttempt > 10000)
     {
-      Serial.println("\nFailed to connect. Resetting...");
+      // Serial.println("\nFailed to connect. Resetting...");
       delay(2000);
       return false;
     }
   }
-  Serial.println("\nWiFi Connected");
+  // Serial.println("\nWiFi Connected");
   return true;
 }
 
@@ -131,41 +127,43 @@ bool ConnectToMqtt()
   int attempts = 0;
   while (!mqtt.connect(MqttClientId.c_str(), MqttUsername, MqttPassword) && attempts < 10)
   {
-    Serial.print(".");
+    // Serial.print(".");
     attempts++;
     delay(1000);
   }
-  Serial.println();
+  // Serial.println();
 
   if (!mqtt.connected())
   {
-    Serial.println("Arduino - MQTT broker connection failed!");
-    Serial.print("Connection attempts: ");
-    Serial.println(attempts);
+    // Serial.println("Arduino - MQTT broker connection failed!");
+    // Serial.print("Connection attempts: ");
+    // Serial.println(attempts);
     return false;
   }
 
   return true;
 }
 
-void HandleTemp()
+void HandleDHT()
 {
   float temp = dht.readTemperature();
+  float humidity = dht.readHumidity();
 
-  if (isnan(temp))
+  if (isnan(temp) || isnan(humidity))
   {
     return;
   }
 
-  CheckTemp(temp);
+  CheckTemp(temp, humidity);
+  CheckHumidity(humidity, temp);
 
   long currentTime = millis();
-  if (currentTime - LastTempPublish < TimeBetweenEachPublish)
+  if (currentTime - LastPublish < TimeBetweenEachPublish)
   {
     return;
   }
 
-  SendTemp(temp);
+  SendDHT(temp, humidity);
 }
 
 int timeBetweenEachCheck = 2000;
@@ -175,108 +173,66 @@ long timeSinceLastHumidityCheck = 0;
 int amountOfReadingOverMaxTemp;
 int amountOfReadingOverMaxHumidity;
 
-void CheckTemp(float temp)
+void CheckTemp(float temp, float humidity)
 {
-  if(temp > MaxAllowedTemperatur)
+  if (temp > MaxAllowedTemperatur)
   {
     long currentTime = millis();
-    if(currentTime - timeSinceLastTempCheck > timeBetweenEachCheck)
+    if (currentTime - timeSinceLastTempCheck > timeBetweenEachCheck)
     {
       amountOfReadingOverMaxTemp++;
       timeSinceLastTempCheck = currentTime;
     }
 
-    if(amountOfReadingOverMaxTemp > maxReadingsOverMax)
+    if (amountOfReadingOverMaxTemp > maxReadingsOverMax)
     {
-      SendTemp(temp);
+      SendDHT(temp, humidity);
     }
   }
 }
 
-void SendTemp(float temp)
+void CheckHumidity(float humidity, float temp)
 {
-  DynamicJsonDocument message(200);
-  message["Temp"] = temp;
-  message["UniqueID"] = MqttClientId;
-
-  char messageBuffer[512];
-  serializeJson(message, messageBuffer);
-
-  Serial.println("Publishing messages");
-  bool success = mqtt.publish(PublishTempTopic, messageBuffer);
-
-  if (!success)
-  {
-    Serial.println("MQTT publish failed!");
-    digitalWrite(Red_Led_Pin, HIGH);
-    return;
-  }
-
-  Serial.println("Published messages");
-  LastTempPublish = millis();
-  amountOfReadingOverMaxTemp = 0;
-}
-
-void HandleHumidity()
-{
-  float humidity = dht.readHumidity();
-
-  if (isnan(humidity))
-  {
-    return;
-  }
-
-  CheckHumidity(humidity);
-
-  long currentTime = millis();
-  if (currentTime - LastHumidityPublish < TimeBetweenEachPublish)
-  {
-    return;
-  }
-
-  SendHumidity(humidity);
-}
-
-void CheckHumidity(float humidity)
-{
-  if(humidity > MaxAllowedHumidity)
+  if (humidity > MaxAllowedHumidity)
   {
     long currentTime = millis();
-    if(currentTime - timeSinceLastHumidityCheck > timeBetweenEachCheck)
+    if (currentTime - timeSinceLastHumidityCheck > timeBetweenEachCheck)
     {
       amountOfReadingOverMaxHumidity++;
       timeSinceLastHumidityCheck = currentTime;
     }
 
-    if(amountOfReadingOverMaxHumidity > maxReadingsOverMax)
+    if (amountOfReadingOverMaxHumidity > maxReadingsOverMax)
     {
-      SendHumidity(humidity);
+      SendDHT(temp, humidity);
     }
   }
 }
 
-void SendHumidity(float humidity)
+void SendDHT(float temp, float humidity)
 {
   DynamicJsonDocument message(200);
+  message["Temp"] = temp;
   message["Humidity"] = humidity;
   message["UniqueID"] = MqttClientId;
 
   char messageBuffer[512];
   serializeJson(message, messageBuffer);
 
-  Serial.println("Publishing messages");
-  bool success = mqtt.publish(PublishHumidityTopic, messageBuffer);
+  // Serial.println("Publishing messages");
+  bool success = mqtt.publish(PublishDHTTopic, messageBuffer);
 
   if (!success)
   {
-    Serial.println("MQTT publish failed!");
+    // Serial.println("MQTT publish failed!");
     digitalWrite(Red_Led_Pin, HIGH);
     return;
   }
 
-  Serial.println("Published messages");
-  LastHumidityPublish = millis();
+  // Serial.println("Published messages");
+  LastPublish = millis();
   amountOfReadingOverMaxTemp = 0;
+  amountOfReadingOverMaxHumidity = 0;
 }
 
 void GetConfiguration()
@@ -287,21 +243,20 @@ void GetConfiguration()
 
   if (success)
   {
-    Serial.println("successed asking for config");
+    // Serial.println("successed asking for config");
   }
   else
   {
-    Serial.println("failed asking for config");
+    // Serial.println("failed asking for config");
+    digitalWrite(Red_Led_Pin, HIGH);
   }
 }
 
 void OnMessagedRecived(String &topic, String &payload)
 {
-    Serial.println("got here");
-
   if (topic == SubscribeTopic)
   {
-    Serial.println("got config");
+    // Serial.println("got config");
 
     StaticJsonDocument<256> doc;
     DeserializationError err = deserializeJson(doc, payload);
@@ -310,7 +265,7 @@ void OnMessagedRecived(String &topic, String &payload)
     MaxAllowedTemperatur = doc["MaxAllowedTemperatur"];
     MaxAllowedHumidity = doc["MaxAllowedHumidity"];
 
-    Serial.println("Config is set");
+    // Serial.println("Config is set");
     mqtt.unsubscribe(SubscribeTopic);
   }
 }

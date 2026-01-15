@@ -20,7 +20,7 @@ const char MqttPassword[] = ""; // Change if it's required, empty if it's not re
 const char PublishTempTopic[] = "hansenberg/card";
 const char PublishTopicDeactivateCard[] = "hansenberg/card/deactivate";
 
-long LastTempPublish = 0;
+long LastPublish = 0;
 int TimeBetweenEachPublish = 2500;
 long TimeSinceLastButtonPress = 0;
 int MaxTimeBeforeIgnore = 3000;
@@ -72,7 +72,7 @@ void setup()
 
   if (!connected || !mqttConneted)
   {
-    Serial.println("Failed To Connect");
+    // Serial.println("Failed To Connect");
     digitalWrite(Red_Led_Pin, HIGH);
     return;
   }
@@ -89,11 +89,11 @@ void loop()
   {
     DeactivateCard = true;
     TimeSinceLastButtonPress = millis();
-    Serial.println("Button pressed");
+    // Serial.println("Button pressed");
   }
 
   long currentTime = millis();
-  if (currentTime - LastTempPublish < BlueLedOnTime)
+  if (currentTime - LastPublish < BlueLedOnTime)
   {
     digitalWrite(Blue_Led_Pin, HIGH);
     digitalWrite(Red_Led_Pin, LOW);
@@ -112,51 +112,51 @@ void loop()
 
   char cardUID[21] = "";
 
-  Serial.print(F("Card UID:"));
+  // Serial.print(F("Card UID:"));
   for (byte i = 0; i < mfrc522.uid.size; i++)
   {
-    Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
-    Serial.print(mfrc522.uid.uidByte[i], HEX);
+    // Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
+    // Serial.print(mfrc522.uid.uidByte[i], HEX);
 
     char hexstring[3];
     sprintf(hexstring, "%02X", mfrc522.uid.uidByte[i]);
 
     strcat(cardUID, hexstring);
   }
-  Serial.println();
+  // Serial.println();
 
   if (DeactivateCard)
   {
-    Serial.println("Should deactivate");
+    // Serial.println("Should deactivate");
     DeactivateCardFunc(cardUID);
     DeactivateCard = false;
   }
   else
   {
-    Serial.println("Shouldn't deactivate");
+    // Serial.println("Shouldn't deactivate");
     SendCardUID(cardUID);
   }
 }
 
 bool connectToWiFi()
 {
-  Serial.print("Connecting to WiFi");
+  // Serial.print("Connecting to WiFi");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
   unsigned long startAttempt = millis();
   while (WiFi.status() != WL_CONNECTED)
   {
-    Serial.print(".");
+    // Serial.print(".");
     delay(500);
 
     if (millis() - startAttempt > 10000)
     {
-      Serial.println("\nFailed to connect. Resetting...");
+      // Serial.println("\nFailed to connect. Resetting...");
       delay(2000);
       return false;
     }
   }
-  Serial.println("\nWiFi Connected");
+  // Serial.println("\nWiFi Connected");
   return true;
 }
 
@@ -188,17 +188,17 @@ bool ConnectToMqtt()
   int attempts = 0;
   while (!mqtt.connect(MqttClientId.c_str(), MqttUsername, MqttPassword) && attempts < 10)
   {
-    Serial.print(".");
+    // Serial.print(".");
     attempts++;
     delay(1000);
   }
-  Serial.println();
+  // Serial.println();
 
   if (!mqtt.connected())
   {
-    Serial.println("Arduino - MQTT broker connection failed!");
-    Serial.print("Connection attempts: ");
-    Serial.println(attempts);
+    // Serial.println("Arduino - MQTT broker connection failed!");
+    // Serial.print("Connection attempts: ");
+    // Serial.println(attempts);
     return false;
   }
 
@@ -208,7 +208,7 @@ bool ConnectToMqtt()
 bool SendCardUID(char *cardUID)
 {
   long currentTime = millis();
-  if (currentTime - LastTempPublish < TimeBetweenEachPublish)
+  if (currentTime - LastPublish < TimeBetweenEachPublish)
   {
     return false;
   }
@@ -220,18 +220,18 @@ bool SendCardUID(char *cardUID)
   char messageBuffer[512];
   serializeJson(message, messageBuffer);
 
-  Serial.println("Publishing messages");
+  // Serial.println("Publishing messages");
   bool success = mqtt.publish(PublishTempTopic, messageBuffer);
 
   if (!success)
   {
-    Serial.println("MQTT publish failed!");
+    // Serial.println("MQTT publish failed!");
     digitalWrite(Red_Led_Pin, HIGH);
     return false;
   }
 
-  Serial.println("Published messages");
-  LastTempPublish = millis();
+  // Serial.println("Published messages");
+  LastPublish = millis();
 }
 
 bool DeactivateCardFunc(char *cardUID)
@@ -249,16 +249,16 @@ bool DeactivateCardFunc(char *cardUID)
   char messageBuffer[512];
   serializeJson(message, messageBuffer);
 
-  Serial.println("Publishing deactivate messages");
+  // Serial.println("Publishing deactivate messages");
   bool success = mqtt.publish(PublishTopicDeactivateCard, messageBuffer);
 
   if (!success)
   {
-    Serial.println("MQTT publish failed!");
+    // Serial.println("MQTT publish failed!");
     digitalWrite(Red_Led_Pin, HIGH);
     return false;
   }
 
-  Serial.println("Published deactivate messages");
-  LastTempPublish = millis();
+  // Serial.println("Published deactivate messages");
+  LastPublish = millis();
 }
