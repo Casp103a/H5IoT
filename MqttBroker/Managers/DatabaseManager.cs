@@ -26,6 +26,9 @@ namespace MqttBroker.Managers
 
             if (!CheckIfUserTableExists())
                 CreateUserTable();
+
+            if(!CheckIfAlertTableExists())
+                CreateAlertTable();
         }
 
         private bool DoesDatabaseExist()
@@ -136,6 +139,32 @@ namespace MqttBroker.Managers
             using var connection = new SqliteConnection(ConnectionString);
             connection.Open();
             const string query = "SELECT name FROM sqlite_master WHERE type='table' AND name='Users';";
+            using var command = new SqliteCommand(query, connection);
+            using var reader = command.ExecuteReader();
+            return reader.HasRows;
+        }
+
+        private void CreateAlertTable()
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+            const string createTableQuery = @"
+                CREATE TABLE IF NOT EXISTS Alerts (
+                    ID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    Timestamp TEXT NOT NULL,
+                    AlertType TEXT NOT NULL,
+                    Description TEXT NOT NULL,
+                    DeviceID TEXT NOT NULL
+                );";
+            using var command = new SqliteCommand(createTableQuery, connection);
+            command.ExecuteNonQuery();
+        }
+
+        private bool CheckIfAlertTableExists()
+        {
+            using var connection = new SqliteConnection(ConnectionString);
+            connection.Open();
+            const string query = "SELECT name FROM sqlite_master WHERE type='table' AND name='Alerts';";
             using var command = new SqliteCommand(query, connection);
             using var reader = command.ExecuteReader();
             return reader.HasRows;

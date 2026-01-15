@@ -2,6 +2,7 @@
 using MqttBroker.Managers;
 using MqttBroker.Service;
 using MQTTnet;
+using System.Reflection;
 using System.Text.Json;
 
 namespace MqttBroker
@@ -13,6 +14,8 @@ namespace MqttBroker
         private static CardService cardService = null!;
         private static UserService userService = null!;
         private static ConfigurationService configurationService = null!;
+        private static AlertService alertService = null!;
+
         private static IMqttClient mqtt;
         private static readonly ManualResetEventSlim ShutdownEvent = new(false);
         private static readonly ManualResetEventSlim WaitingForInternet = new(false);
@@ -110,6 +113,7 @@ namespace MqttBroker
                 userService = new UserService(databaseManager);
                 pinService = new PinService(mqttClient, databaseManager);
                 cardService = new CardService(databaseManager);
+                alertService = new AlertService(databaseManager);
 
                 Console.WriteLine("Database and managers initialized successfully.");
             }
@@ -226,7 +230,7 @@ namespace MqttBroker
                         mqtt.PublishAsync(timeMessage, CancellationToken.None).Wait();
                         break;
                     case "hansenberg/alert":
-
+                        alertService.Handle(message, clientId);
                         break;
                     default:
                         Console.WriteLine($"Unhandled topic: {topic}");
